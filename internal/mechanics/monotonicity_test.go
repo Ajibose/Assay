@@ -89,7 +89,7 @@ func runFindings(t *testing.T, findings []mechanics.Finding) *mechanics.Report {
 	for _, f := range findings {
 		checks = append(checks, fixedCheck{finding: f})
 	}
-	rep, err := (&mechanics.Engine{Checks: checks}).Run(context.Background(), &mechanics.Subject{})
+	rep, err := (&mechanics.Engine{Checks: checks, AllowPartialCheckSet: true}).Run(context.Background(), &mechanics.Subject{})
 	if err != nil {
 		t.Fatalf("Run over generated findings: %v\nfindings: %s", err, describeFindings(findings))
 	}

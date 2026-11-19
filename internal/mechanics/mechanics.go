@@ -11,6 +11,7 @@ package mechanics
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -22,6 +23,10 @@ import (
 	"github.com/use-assay/assay/internal/sep1"
 	"github.com/use-assay/assay/internal/stellarexpert"
 )
+
+// ErrPartialCheckSet reports that an engine has a subset of default checks
+// without the required AllowPartialCheckSet option (issue #404).
+var ErrPartialCheckSet = errors.New("mechanics: partial check set requires explicit AllowPartialCheckSet")
 
 // TimeFormat is the one wire format for every time value Assay emits (issue
 // #52): UTC, RFC 3339, whole-second precision (RFC 3339 "Z" form, no
@@ -566,6 +571,13 @@ type Report struct {
 	// Checks is retained for the legacy evidence preimage encoding.
 	Checks []string `json:"-"`
 
+	// PartialCheckSet reports that the engine ran with a check set smaller than
+	// the default under the explicit AllowPartialCheckSet option (issue #404).
+	// Such reports are refused by attest.FromReport.
+	PartialCheckSet bool `json:"partial_check_set,omitempty"`
+	// AllowPartialCheckSet records that the partial check set was explicitly allowed.
+	AllowPartialCheckSet bool `json:"allow_partial_check_set,omitempty"`
+
 	// ScannerBound opts this report into the v4 preimage encoding, which
 	// adds a `scanner` line naming the code that produced the report
 	// (issue #40). scan.Scanner sets it on every report it produces (#271);
@@ -599,19 +611,65 @@ type Report struct {
 	ScannedAt CanonicalTime `json:"scanned_at"`
 }
 
-// Engine runs a set of checks over a Subject.
-type Engine struct {
-	Checks []Check
+// Option configures an Engine.
+type Option func(*Engine)
+
+// AllowPartialCheckSet explicitly permits an engine to run with a check set
+// smaller than the default or a subset of default checks (issue #404). Reports
+// produced by such an engine will have PartialCheckSet set to true and will be
+// refused by attest.FromReport.
+func AllowPartialCheckSet() Option {
+	return func(e *Engine) {
+		e.AllowPartialCheckSet = true
+	}
 }
 
-// NewEngine returns an Engine with the default check set.
-func NewEngine() *Engine {
-	return &Engine{Checks: []Check{
+// WithChecks configures an Engine with specific checks.
+func WithChecks(checks ...Check) Option {
+	return func(e *Engine) {
+		e.Checks = checks
+	}
+}
+
+// Engine runs a set of checks over a Subject.
+type Engine struct {
+	Checks               []Check
+	AllowPartialCheckSet bool
+}
+
+// defaultCheckIDs lists the stable IDs of the full default check set.
+var defaultCheckIDs = []string{"capability", "mutability", "reputation", "sep1-domain"}
+
+// IsPartialCheckSet reports whether the engine runs a check set smaller than
+// the default or a subset of the default checks (issue #404).
+func (e *Engine) IsPartialCheckSet() bool {
+	if len(e.Checks) < len(defaultCheckIDs) {
+		return true
+	}
+	have := make(map[string]bool, len(e.Checks))
+	for _, c := range e.Checks {
+		have[c.ID()] = true
+	}
+	for _, id := range defaultCheckIDs {
+		if !have[id] {
+			return true
+		}
+	}
+	return false
+}
+
+// NewEngine returns an Engine. With no options, it uses the default check set.
+func NewEngine(opts ...Option) *Engine {
+	e := &Engine{Checks: []Check{
 		CapabilityCheck{},
 		MutabilityCheck{},
 		DomainCheck{},
 		ReputationCheck{},
 	}}
+	for _, opt := range opts {
+		opt(e)
+	}
+	return e
 }
 
 // CheckIDs returns the stable IDs of the checks this engine runs, sorted so
@@ -667,6 +725,14 @@ func (e *Engine) Run(ctx context.Context, s *Subject) (*Report, error) {
 		Evidence:             []Evidence{},
 		UndeterminedChecks:   []string{},
 		UndeterminedBySource: make(map[string]int),
+	}
+
+	if e.IsPartialCheckSet() {
+		if !e.AllowPartialCheckSet {
+			return nil, fmt.Errorf("%w: engine check set is smaller than default without explicit AllowPartialCheckSet", ErrPartialCheckSet)
+		}
+		rep.PartialCheckSet = true
+		rep.AllowPartialCheckSet = true
 	}
 
 	totalChecks := len(e.Checks)
