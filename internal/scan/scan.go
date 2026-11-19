@@ -719,7 +719,10 @@ func (s *Scanner) ScanWithHolder(ctx context.Context, a mechanics.Asset, holder 
 	}
 	eng := s.Engine
 	if holder != "" {
-		eng = &mechanics.Engine{Checks: append([]mechanics.Check{}, s.Engine.Checks...)}
+		eng = &mechanics.Engine{
+			Checks:               append([]mechanics.Check{}, s.Engine.Checks...),
+			AllowPartialCheckSet: s.Engine.AllowPartialCheckSet,
+		}
 		eng.Checks = append(eng.Checks, mechanics.TrustlineCheck{})
 	}
 	rep, err := bindScanner(eng.Run(ctx, sub))
