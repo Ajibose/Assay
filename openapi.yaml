@@ -240,6 +240,14 @@ components:
           description: >-
             True when the failure is a host-policy refusal: the scanner
             declined to make the request at all.
+        latest_ledger:
+          type: integer
+          description: >-
+            The latest ledger sequence reported by Horizon when answering.
+            Metadata outside the evidence_hash preimage.
+        ledger_sequence:
+          type: integer
+          description: Alias for latest_ledger.
     ClockSkew:
       type: object
       description: >-

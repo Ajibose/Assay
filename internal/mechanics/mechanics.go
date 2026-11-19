@@ -10,6 +10,7 @@ package mechanics
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -140,6 +141,33 @@ type Evidence struct {
 	// and must be distinguishable by a program, not only by the wording of
 	// Claim.
 	Refused bool `json:"refused,omitempty"`
+	// LatestLedger is the ledger sequence Horizon reported when answering
+	// (issue #402). Observation time (RetrievedAt) is wall-clock; the ledger
+	// sequence is the ledger's own clock and lets a verifier ask "what did the
+	// ledger say at ledger N" from an archive node.
+	//
+	// It is metadata outside the evidence_hash preimage, matching RequestedURL:
+	// adding it does not change the digest of an otherwise unchanged report.
+	LatestLedger int64 `json:"latest_ledger,omitempty"`
+	// LedgerSequence is an alias for LatestLedger.
+	LedgerSequence int64 `json:"ledger_sequence,omitempty"`
+}
+
+// UnmarshalJSON decodes an Evidence object, ensuring LatestLedger and
+// LedgerSequence remain synchronized if either was emitted in JSON.
+func (e *Evidence) UnmarshalJSON(b []byte) error {
+	type wire Evidence
+	var w wire
+	if err := json.Unmarshal(b, &w); err != nil {
+		return err
+	}
+	*e = Evidence(w)
+	if e.LatestLedger == 0 && e.LedgerSequence > 0 {
+		e.LatestLedger = e.LedgerSequence
+	} else if e.LedgerSequence == 0 && e.LatestLedger > 0 {
+		e.LedgerSequence = e.LatestLedger
+	}
+	return nil
 }
 
 // Finding is one check's result.
@@ -201,9 +229,13 @@ type Subject struct {
 	Stat  *horizon.AssetStat
 	// StatFetchedAt is when Horizon answered the /assets lookup.
 	StatFetchedAt time.Time
-	Issuer        *horizon.Account
+	// StatLedger is the ledger sequence Horizon reported for the /assets query.
+	StatLedger int64
+	Issuer     *horizon.Account
 	// IssuerFetchedAt is when Horizon answered the issuer /accounts lookup.
 	IssuerFetchedAt time.Time
+	// IssuerLedger is the ledger sequence Horizon reported for the /accounts query.
+	IssuerLedger int64
 
 	// Toml is the issuer's stellar.toml if it resolved. TomlErr records why it
 	// did not, and is reported verbatim rather than being smoothed over.
@@ -303,6 +335,8 @@ type Subject struct {
 	// completion time — the source did answer, "not listed".
 	HolderFetchedAt   time.Time
 	HolderAttemptedAt time.Time
+	// HolderLedger is the ledger sequence Horizon reported for the holder trustline query.
+	HolderLedger int64
 
 	// ScannedAt is when the scan started. It is the report-level timestamp:
 	// evidence carries the time of the source it came from, and the report
@@ -397,6 +431,36 @@ func (s *Subject) DomainVerified() bool {
 		return false
 	}
 	return s.Toml.Claims(s.Asset.Code, s.Asset.Issuer)
+}
+
+func (s *Subject) statLedger() int64 {
+	if s.StatLedger > 0 {
+		return s.StatLedger
+	}
+	if s.Stat != nil && s.Stat.LatestLedger > 0 {
+		return s.Stat.LatestLedger
+	}
+	return 0
+}
+
+func (s *Subject) issuerLedger() int64 {
+	if s.IssuerLedger > 0 {
+		return s.IssuerLedger
+	}
+	if s.Issuer != nil && s.Issuer.LatestLedger > 0 {
+		return s.Issuer.LatestLedger
+	}
+	return 0
+}
+
+func (s *Subject) holderLedger() int64 {
+	if s.HolderLedger > 0 {
+		return s.HolderLedger
+	}
+	if s.HolderTrustline != nil && s.HolderTrustline.LatestLedger > 0 {
+		return s.HolderTrustline.LatestLedger
+	}
+	return 0
 }
 
 // Check is a single mechanic classifier. Implementations are pure functions
