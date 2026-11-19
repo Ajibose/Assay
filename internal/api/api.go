@@ -140,14 +140,14 @@ func (s *Server) handleUI(w http.ResponseWriter, r *http.Request) {
 // Error codes. These are the stable identifiers API consumers should branch on;
 // the human-readable error message may change, the code will not.
 const (
-	codeAssetNotFound     = "asset_not_found"
-	codeAccountNotFound   = "account_not_found"
-	codeInvalidAsset      = "invalid_asset"
-	codeInvalidHolder     = "invalid_holder"
-	codeInvalidParam      = "invalid_param"
-	codeMissingParam      = "missing_param"
-	codeUpstreamUnavail   = "upstream_unavailable"
-	codeRateLimited       = "rate_limited"
+	codeAssetNotFound   = "asset_not_found"
+	codeAccountNotFound = "account_not_found"
+	codeInvalidAsset    = "invalid_asset"
+	codeInvalidHolder   = "invalid_holder"
+	codeInvalidParam    = "invalid_param"
+	codeMissingParam    = "missing_param"
+	codeUpstreamUnavail = "upstream_unavailable"
+	codeRateLimited     = "rate_limited"
 )
 
 type errorBody struct {
