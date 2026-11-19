@@ -21,7 +21,7 @@ STELLAR_CLI_VERSION := 27.1.0
 
 .PHONY: help doctor all build build-release test test-notify test-preimage test-reproducibility test-stellar-cli-version cover lint fmt vet run clean \
 	offline-test e2e-standalone \
-	contract-test contract-lint contract-build wasm-size \n	build-contract deploy-testnet attest read check-stellar-cli-version verify-gate verify-wasm \n	eval-record eval-compare
+	contract-test contract-lint contract-build wasm-size \n	build-contract deploy-testnet attest reattest test-reattest-corpus read check-stellar-cli-version verify-gate verify-wasm \n	eval-record eval-compare
 
 help: ## List every target with a one-line description
 	@awk 'BEGIN {FS = ":.*## "; print "Usage: make <target>\n\nTargets:"} /^[a-zA-Z0-9_.-]+:.*## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -196,6 +196,16 @@ check-stellar:
 attest: check-stellar-cli-version build
 	@ASSAY_BIN=./$(BINARY) NETWORK=$(NETWORK) CONTRACT_ID=$(CONTRACT_ID) SOURCE=$(SOURCE) \
 		bash ./scripts/attest-run.sh --asset '$(ASSET)'
+
+# reattest walks the attested corpus (scripts/attested-assets.txt) through
+# `make attest`'s runner. It is a manual, key-holder-run procedure; see
+# docs/reattestation.md. Undetermined scans are skipped, never attested.
+reattest: check-stellar-cli-version build
+	@ASSAY_BIN=./$(BINARY) NETWORK=$(NETWORK) CONTRACT_ID=$(CONTRACT_ID) SOURCE=$(SOURCE) \
+		bash ./scripts/reattest-corpus.sh
+
+test-reattest-corpus:
+	bash ./scripts/test-reattest-corpus.sh
 
 # read calls get_safety against the deployed contract. It simulates rather than
 # submits, so reading an attestation costs nothing and needs no signature.
