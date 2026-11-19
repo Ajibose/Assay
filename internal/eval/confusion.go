@@ -65,7 +65,7 @@ func BuildConfusionMatrix(engine *mechanics.Engine, fixturesDir string) (*Confus
 	corpusSize := len(labels)
 
 	matrix := &ConfusionMatrix{
-		Version:    version.Version,
+		Version:    version.Current(),
 		SampleSize: corpusSize,
 		CorpusSize: corpusSize,
 	}

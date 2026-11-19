@@ -312,6 +312,60 @@ compromise has put in an attacker's hands — and it is not loss recovery either
 because a lost key cannot sign the first step. Both of those remain
 redeploy-and-re-attest, as the sections above state.
 
+## Signing ceremony for a multisig admin
+
+This is the procedure for [Scheme A](multi-attestor.md#scheme-a-the-admin-becomes-a-threshold-account)
+([#327](https://github.com/use-assay/Assay/issues/327)): the admin becomes a
+native 2-of-3 Stellar account, so no single key can write. It needs no
+contract change. **Status: documented, not yet executed.** The testnet admin
+is still the single key above; creating the signers' keys, rotating the admin
+and writing the first multisig attestation need three people holding keys on
+separate machines, and nothing in this repository can do that for them.
+
+**Setup.** Each of three signers generates their own key on their own machine
+and shares only the public `G...` address. Nobody ever transmits a seed.
+`scripts/multisig-admin-plan.sh MULTISIG SIGNER1 SIGNER2 SIGNER3` takes the
+four public keys and prints the `set-options` commands (three weight-1
+signers, all thresholds 2, master weight 0), the verification query, and the
+admin hand-off. It refuses seeds, malformed keys and duplicates, and submits
+nothing.
+
+**Rotating the admin.** On a registry built from current source, use the
+[two-step transfer](#two-step-transfer-on-a-source-built-instance):
+`transfer_admin` to the multisig account, then `accept_admin` signed by two
+signers. The live testnet instance has no rotation entrypoint, so there the
+multisig is installed through the migration to a new registry
+([deployment.md](deployment.md#migrating-to-a-registry-with-revoke)) with the
+multisig account as `init`'s admin. Do not retire the old key until the
+account's signers and thresholds have been read back from Horizon.
+
+**Signing ceremony, per attestation.** The scheme cannot check that signers
+look; the ceremony is what makes them look.
+
+1. The coordinator runs `make attest`'s derivation (`assay attestation -raw
+   ASSET`) and builds **one** unsigned transaction, then shares the
+   transaction envelope and the derived severity, flags and evidence hash.
+2. **Each signer independently re-scans** the asset on their own machine with
+   `assay attestation -raw ASSET` and compares severity, flags and evidence
+   hash with the transaction's arguments. A mismatch, or an undetermined scan,
+   means **do not sign**; say why.
+3. A signer who agrees signs the envelope on their own machine and returns
+   only the signature.
+4. When two signatures are collected, the coordinator submits. The registry
+   sees a normal `require_auth` success.
+5. Record the transaction hash and the signers' public keys in the run record
+   and in [deployment.md](deployment.md).
+
+A coordinator that is compromised can propose a bad value; step 2 is the
+defence, so a signer who skips it has turned 2-of-3 back into one key. A
+signer who disagrees simply does not sign, which the registry cannot tell from
+an offline signer.
+
+**Acceptance status for #327.** Not done, needs the keys: the account is
+2-of-3, and one attestation is written through it with its transaction
+recorded. Done in the repository: this procedure and the public-key-only
+planning script.
+
 ## What this document does not publish
 
 Only the public address `GALIEUOBD…` and the identity name `assay-attester`

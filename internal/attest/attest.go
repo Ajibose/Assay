@@ -131,7 +131,7 @@ func NormalizePreimageVersion(version string) (string, error) {
 // rather than a constant so tests can pin a known identity and so a future
 // build-stamping scheme can override it deliberately — with a PreimageVersion
 // review, as any identity change is a hash change.
-var ScannerIdentity = version.Version
+var ScannerIdentity = version.Current()
 
 // Params is one attest() call: the arguments, and nothing else.
 //

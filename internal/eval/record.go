@@ -66,7 +66,7 @@ func Run(engine *mechanics.Engine, fixturesDir string) (*Record, error) {
 	if err != nil {
 		return nil, err
 	}
-	rec := &Record{Version: version.Version, GeneratedAt: time.Now().UTC()}
+	rec := &Record{Version: version.Current(), GeneratedAt: time.Now().UTC()}
 	for _, label := range labels {
 		s, err := LoadSubject(fixturesDir, label.Dir)
 		if err != nil {

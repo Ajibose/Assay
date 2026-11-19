@@ -33,6 +33,16 @@ import (
 // in a release with a new tag rather than under an unchanged version.
 var Version = moduleVersion()
 
+// Current answers "what version is this scanner". It is the one function the
+// eval recorder and the attestation identity both read (issue #279), so the
+// two cannot name different versions for the same binary. It returns the
+// value computed once at start-up, never the mutable Version variable, so a
+// test that pins attest.ScannerIdentity does not change what the eval
+// recorder reports.
+func Current() string { return current }
+
+var current = Version
+
 // moduleVersion reads the main module's version from the build info embedded
 // by the Go toolchain. "devel" for unstamped builds mirrors what
 // `go version -m` prints for a binary built from source without a version
