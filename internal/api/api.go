@@ -49,7 +49,13 @@ type Server struct {
 	// default", never "allow unlimited"; an exposure endpoint without a
 	// bound would be N scans per request with nothing between them.
 	ExposureLimiter *RateLimiter
-	Log             *slog.Logger
+	// ScanLimiter rate-limits GET /api/v1/scan per client address.
+	// When nil, no rate limit is applied — nil means "off", not "default".
+	// The limit is intentionally off by default for local use and development;
+	// public deployments should configure this to protect upstream services
+	// (Horizon, StellarExpert) from being hammered under Assay's User-Agent.
+	ScanLimiter *RateLimiter
+	Log         *slog.Logger
 }
 
 // NewServer returns a Server backed by the production scanner and an in-memory
@@ -98,8 +104,13 @@ func (s *Server) Handler() http.Handler {
 	// the process is up and checks nothing, /readyz asks the upstreams. A
 	// failing probe must never report healthy; a dying process must still be
 	// able to answer /healthz.
+	scanHandler := http.HandlerFunc(s.handleScan)
+	if s.ScanLimiter != nil {
+		scanHandler = s.withScanLimit(s.ScanLimiter, s.handleScan)
+	}
+
 	handlers := map[string]http.HandlerFunc{
-		"GET /api/v1/scan":     s.handleScan,
+		"GET /api/v1/scan":     scanHandler,
 		"GET /api/v1/history":  s.handleHistory,
 		"GET /api/v1/exposure": s.withExposureLimit(limiter, s.handleExposure),
 		"GET /metrics":         s.handleMetrics,

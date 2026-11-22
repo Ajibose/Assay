@@ -48,7 +48,7 @@ the message text.
 | `asset_not_found` | The asset does not exist on the ledger. |
 | `account_not_found` | The account does not exist on the ledger. |
 | `upstream_unavailable` | A required upstream call (Horizon, StellarExpert) failed. |
-| `rate_limited` | The client has exceeded the exposure rate limit; see `Retry-After`. |
+| `rate_limited` | The client has exceeded a rate limit (exposure always; scan when configured); see `Retry-After`. |
 
 ## Conventions
 
@@ -120,6 +120,10 @@ Status codes:
 - `400 Bad Request`: invalid asset code or issuer, missing `?asset=`, or an
   identifier naming the native asset — see above.
 - `404 Not Found`: asset not found on the ledger.
+- `429 Too Many Requests`: scan rate limit exceeded (only when configured via
+  `--scan-rate`; not applied by default). `Retry-After` gives the wait in
+  seconds. Public deployments should configure this to protect the shared
+  Horizon and StellarExpert upstreams.
 - `502 Bad Gateway`: the scan failed on an underlying network or upstream
   error; the message names the failing source.
 
@@ -266,8 +270,8 @@ Status codes:
 - `400 Bad Request`: missing or invalid `account`, `limit`, or `cursor`.
 - `404 Not Found`: account not found on the ledger.
 - `429 Too Many Requests`: rate limited. `Retry-After` gives the wait in
-  seconds. Exposure is rate-limited per client address because one request
-  runs a full scan per asset; `/api/v1/scan` is not affected.
+  seconds. Exposure is always rate-limited per client address because one
+  request runs a full scan per asset.
 - `502 Bad Gateway`: the account's trustline list could not be fetched.
 
 ### `GET /metrics`
