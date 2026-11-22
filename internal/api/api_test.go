@@ -265,4 +265,3 @@ func TestScanRateLimited(t *testing.T) {
 		t.Fatalf("other client: got 429, want independent burst")
 	}
 }
-
