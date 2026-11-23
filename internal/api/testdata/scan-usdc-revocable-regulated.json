@@ -76,7 +76,7 @@
       "escalation": false,
       "evidence": [],
       "mechanics": [],
-      "reasoning": "The issuer's flag set is not locked (auth_immutable is unset), so it can still change. The issuer can freeze an existing holder's balance (auth_revocable) today, and it may give that power up, or add another, later. Under CAP-0035 a flag added later applies only to trustlines opened after the change — it does not reach a trustline that already exists — so this verdict is correct for a trustline opened now but is not guaranteed to stay correct for one opened later. Severity is unchanged; mutability is reported, not scored.",
+      "reasoning": "The issuer's flag set is not locked (auth_immutable is unset), so it can still change. The issuer can freeze an existing holder's balance (auth_revocable) today, and it may give that power up, or add another, later. Under CAP-0035 a flag added later applies only to trustlines opened after the change — it does not reach a trustline that already exists — so this verdict is correct for a trustline opened now but is not guaranteed to stay correct for one opened later. Severity is unchanged; mutability is reported, not scored. The issuer's signer configuration was not available, so a signer lock could neither be ruled in nor out; this finding does not claim a signer lock it did not read.",
       "severity": "clear",
       "title": "Issuer flag mutability",
       "undetermined": false
