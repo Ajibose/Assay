@@ -205,6 +205,8 @@ func runWith(args []string, d commandDeps) error {
 func runScan(args []string, d commandDeps) error {
 	fs := newFlagSet("scan")
 	assetLists := assetListFlags(fs)
+	horizonURL := fs.String("horizon", "",
+		"Horizon base URL to use for scanning (overrides ASSAY_HORIZON_URL)")
 	cache := cacheFlags(fs)
 	recordDir := fs.String("record", "",
 		"save every upstream response into DIR for later -replay")
@@ -223,6 +225,14 @@ func runScan(args []string, d commandDeps) error {
 	if *recordDir != "" && *replayDir != "" {
 		return fmt.Errorf("-record and -replay are mutually exclusive")
 	}
+
+	// Resolve the Horizon URL: flag takes precedence, then environment variable.
+	hz := *horizonURL
+	if hz == "" {
+		hz = os.Getenv("ASSAY_HORIZON_URL")
+	}
+	// Set the env var so that scan.New() picks it up.
+	os.Setenv("ASSAY_HORIZON_URL", hz) // nolint:errcheck
 
 	scanFn, finish, err := scanFuncForRecording(assetLists(), cache(), d, *recordDir, *replayDir)
 	if err != nil {
@@ -395,6 +405,8 @@ func (l *listFlag) Set(v string) error {
 func runAttestation(args []string, d commandDeps) error {
 	fs := newFlagSet("attestation")
 	assetLists := assetListFlags(fs)
+	horizonFlag := fs.String("horizon", "",
+		"Horizon base URL to use for scanning (overrides ASSAY_HORIZON_URL)")
 	cache := cacheFlags(fs)
 	preimage := fs.Bool("preimage", false, "include the canonical bytes evidence_hash commits to")
 	raw := fs.Bool("raw", false, "print only the attest() arguments, tab-separated, for scripting")
@@ -420,6 +432,14 @@ func runAttestation(args []string, d commandDeps) error {
 	if err != nil {
 		return fmt.Errorf("attestation: %w", err)
 	}
+
+	// Resolve the Horizon URL: flag takes precedence, then environment variable.
+	hz := *horizonFlag
+	if hz == "" {
+		hz = os.Getenv("ASSAY_HORIZON_URL")
+	}
+	// Set the env var so that scan.New() picks it up.
+	os.Setenv("ASSAY_HORIZON_URL", hz) // nolint:errcheck
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -727,6 +747,8 @@ func openHistory(path string, retention int) (*historystore.Store, error) {
 func runServe(args []string, log *slog.Logger) error {
 	fs := newFlagSet("serve")
 	assetLists := assetListFlags(fs)
+	horizonFlag := fs.String("horizon", "",
+		"Horizon base URL to use for scanning (overrides ASSAY_HORIZON_URL)")
 	cache := cacheFlags(fs)
 	addr := fs.String("addr", ":8080", "listen address")
 	historyPath := fs.String("history", "",
@@ -745,6 +767,14 @@ func runServe(args []string, log *slog.Logger) error {
 	if *historyRetention < 1 {
 		return usagef("serve: -history-retention must be at least 1, got %d", *historyRetention)
 	}
+
+	// Resolve the Horizon URL: flag takes precedence, then environment variable.
+	hz := *horizonFlag
+	if hz == "" {
+		hz = os.Getenv("ASSAY_HORIZON_URL")
+	}
+	// Set the env var so that newScanner() / scan.New() picks it up.
+	os.Setenv("ASSAY_HORIZON_URL", hz) // nolint:errcheck
 
 	// The server is where a list configuration matters most: every scan it
 	// serves consults the same configured lists, attributed the same way, and
