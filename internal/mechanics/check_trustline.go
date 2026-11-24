@@ -86,6 +86,7 @@ func (c TrustlineCheck) Run(_ context.Context, s *Subject) (Finding, error) {
 
 	if s.HolderTrustlineErr != "" {
 		f.Undetermined = true
+		f.UndeterminedSource = "horizon"
 		f.Reasoning = holderNote + fmt.Sprintf(
 			"Could not fetch trustline flags for holder %s: %s. "+
 				"This does not mean the holder is safe — it means the "+
