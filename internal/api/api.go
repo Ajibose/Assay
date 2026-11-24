@@ -89,6 +89,7 @@ var Routes = []string{
 	"GET /api/v1/history",
 	"GET /api/v1/events",
 	"GET /api/v1/exposure",
+	"GET /api/v1/attestation",
 	"GET /metrics",
 	"GET /healthz",
 	"GET /readyz",
@@ -132,11 +133,12 @@ func (s *Server) Handler() http.Handler {
 	}
 
 	handlers := map[string]http.HandlerFunc{
-		"GET /api/v1/scan":     scanHandler,
-		"GET /api/v1/history":  s.handleHistory,
-		"GET /api/v1/events":   s.handleEvents,
-		"GET /api/v1/exposure": s.withExposureLimit(limiter, s.handleExposure),
-		"GET /metrics":         s.handleMetrics,
+		"GET /api/v1/scan":        scanHandler,
+		"GET /api/v1/history":     s.handleHistory,
+		"GET /api/v1/events":      s.handleEvents,
+		"GET /api/v1/exposure":    s.withExposureLimit(limiter, s.handleExposure),
+		"GET /api/v1/attestation": s.handleAttestation,
+		"GET /metrics":            s.handleMetrics,
 		"GET /healthz": func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte("ok"))

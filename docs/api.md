@@ -393,6 +393,32 @@ Status codes:
   request runs a full scan per asset.
 - `502 Bad Gateway`: the account's trustline list could not be fetched.
 
+### `GET /api/v1/attestation?asset=CODE-ISSUER`
+
+Scans the asset and returns the exact arguments of an on-chain `attest()`
+call, or says why the scan cannot be attested. The response schema is
+[`Attestation`](../openapi.yaml) in `openapi.yaml`.
+
+Parameters:
+
+- `asset` (required): asset code and issuer, in any of the spellings `scan`
+  accepts.
+
+A `200` response always carries `attestable`. When it is `true`, `severity`,
+`severity_name`, `flags`, `mechanics`, `checks`, `network`, `evidence_hash`,
+`scanned_at` and `preimage` are the attest arguments and the canonical bytes
+`evidence_hash` commits to. When it is `false`, `reason` and `error_kind`
+(`undetermined`, `unevaluated`, `stale`, `inconsistent`, `partial_check_set`
+or `scan_failed`) explain the refusal; an unattestable scan is not an HTTP
+error.
+
+Status codes:
+
+- `400 Bad Request`: missing or invalid `asset` (`missing_param`,
+  `invalid_asset`).
+- `404 Not Found`: asset not found on the ledger.
+- `502 Bad Gateway`: the scan could not reach its upstream sources.
+
 ### `GET /metrics`
 
 Scan outcome and per-source failure counters accumulated since process start:
