@@ -24,6 +24,21 @@ func (CapabilityCheck) Describe() string {
 		"the issuer is or whether they are likely to use the power."
 }
 
+// Inputs implements Check.
+func (CapabilityCheck) Inputs() []string {
+	return []string{
+		"Asset",
+		"HorizonURL",
+		"Issuer",
+		"IssuerFetchedAt",
+		"IssuerLedger",
+		"Network",
+		"Stat",
+		"StatFetchedAt",
+		"StatLedger",
+	}
+}
+
 // Run implements Check.
 //
 // Severity is the highest single capability present, not a sum. auth_revocable
@@ -50,6 +65,7 @@ func (c CapabilityCheck) Run(_ context.Context, s *Subject) (Finding, error) {
 		// it non-attestable at attest.FromReport.
 		f.Severity = Unevaluated
 		f.Undetermined = true
+		f.UndeterminedSource = "horizon"
 		f.Reasoning = "Asset not found on the ledger, so no issuer capability could be read: the capability axis is unevaluated, not clear."
 		return f, nil
 	}
@@ -61,7 +77,7 @@ func (c CapabilityCheck) Run(_ context.Context, s *Subject) (Finding, error) {
 		f.Undetermined = true
 		f.Evidence = append(f.Evidence, Evidence{
 			Source:         "horizon",
-			URL:            horizonAssetURL(s.Asset),
+			URL:            s.horizonAssetURL(s.Asset),
 			Claim:          "issuer flags: " + flagSummary(s.Stat.Flags),
 			RetrievedAt:    NewCanonicalTime(s.StatFetchedAt),
 			LatestLedger:   s.statLedger(),
@@ -70,7 +86,7 @@ func (c CapabilityCheck) Run(_ context.Context, s *Subject) (Finding, error) {
 		if s.Issuer != nil {
 			f.Evidence = append(f.Evidence, Evidence{
 				Source:         "horizon/account",
-				URL:            horizonAccountURL(s.Asset.Issuer),
+				URL:            s.horizonAccountURL(s.Asset.Issuer),
 				Claim:          "issuer account flags: " + flagSummary(s.Issuer.Flags),
 				RetrievedAt:    NewCanonicalTime(s.IssuerFetchedAt),
 				LatestLedger:   s.issuerLedger(),
@@ -89,6 +105,16 @@ func (c CapabilityCheck) Run(_ context.Context, s *Subject) (Finding, error) {
 			". Under CAP-0035, auth_clawback_enabled requires auth_revocable. " +
 			"Each Horizon copy is cited below. This source fault makes issuer capability undetermined."
 		return f, nil
+	}
+
+	if s.IssuerMerged {
+		// The issuer account has been merged: /accounts returned 404. The asset
+		// record is still present so the last-known flags are available, but we
+		// cannot corroborate them with the account record. Mark undetermined so
+		// the report cannot be attested — a merged issuer's flags cannot be
+		// independently verified and the report must never read as clear when the
+		// second source is unavailable.
+		f.Undetermined = true
 	}
 
 	// Horizon publishes the issuer's authorization flags twice: on the asset
@@ -121,7 +147,7 @@ func (c CapabilityCheck) Run(_ context.Context, s *Subject) (Finding, error) {
 	assetLedger := s.statLedger()
 	f.Evidence = append(f.Evidence, Evidence{
 		Source:         "horizon",
-		URL:            horizonAssetURL(s.Asset),
+		URL:            s.horizonAssetURL(s.Asset),
 		Claim:          "issuer flags: " + flagSummary(flags),
 		RetrievedAt:    NewCanonicalTime(s.StatFetchedAt),
 		LatestLedger:   assetLedger,
@@ -136,7 +162,7 @@ func (c CapabilityCheck) Run(_ context.Context, s *Subject) (Finding, error) {
 		acctLedger := s.issuerLedger()
 		f.Evidence = append(f.Evidence, Evidence{
 			Source:         "horizon/account",
-			URL:            horizonAccountURL(s.Asset.Issuer),
+			URL:            s.horizonAccountURL(s.Asset.Issuer),
 			Claim:          "issuer account flags: " + flagSummary(s.Issuer.Flags),
 			RetrievedAt:    NewCanonicalTime(s.IssuerFetchedAt),
 			LatestLedger:   acctLedger,
@@ -145,6 +171,13 @@ func (c CapabilityCheck) Run(_ context.Context, s *Subject) (Finding, error) {
 	}
 
 	var b strings.Builder
+	if s.IssuerMerged {
+		b.WriteString("The issuer account has been merged: the /accounts endpoint " +
+			"returned not found. The last-known flags from the asset record are " +
+			"reported here but cannot be corroborated with the account record. " +
+			"This check is undetermined because the second copy of flags is " +
+			"unavailable. ")
+	}
 	if disagreement != "" {
 		b.WriteString(disagreement)
 		b.WriteString(" ")

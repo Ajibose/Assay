@@ -14,6 +14,7 @@ nowhere to put one.
 type Check interface {
     ID() string
     Describe() string
+    Inputs() []string // Subject fields the check reads
     Run(ctx context.Context, s *Subject) (Finding, error)
 }
 ```
@@ -125,11 +126,13 @@ number. There are four states, each with its own reasoning:
   `auth_immutable` mechanic bit, because that bit is the ledger's record that
   the flag itself is set — the report must not claim a flag the issuer does not
   hold. Like every mutability state, it never changes severity (#359).
-- **Not locked** — the issuer may add freeze or confiscation later. Under
-  CAP-0035 a flag added later does not reach trustlines that already exist, but
-  it applies to any trustline opened after the change. This is the state a
-  prospective holder wants surfaced, because it is the one where today's `clear`
-  is not a durable answer.
+- **Not locked** — the issuer may add freeze or confiscation later. Adding
+  `auth_revocable` would immediately allow the issuer to freeze existing
+  trustlines; existing holders are exposed as soon as the flag is set. Adding
+  `auth_clawback_enabled` under CAP-0035 applies only to trustlines opened after
+  the change and does not reach trustlines that already exist. Either way this is
+  the state a prospective holder wants surfaced, because it is the one where
+  today's `clear` is not a durable answer.
 
 **Flag and signer source.** The check reads the issuer flags from the same
 reconciled set the `capability` check derives severity from, so the two findings

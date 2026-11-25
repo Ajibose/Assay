@@ -65,10 +65,19 @@ func (MutabilityCheck) Describe() string {
 		"auth_immutable with no dangerous flags (a durable safety property), locked " +
 		"with freeze or clawback (the power is permanent), locked by the account's " +
 		"signer configuration (master key weight 0, no other signers), or unlocked " +
-		"(the issuer may add freeze or confiscation later, which under CAP-0035 " +
-		"would not reach existing trustlines but would apply to ones opened after " +
-		"the change). Never sets severity: neither auth_immutable nor a signer lock " +
-		"is a power over holders."
+		"(the issuer may add freeze or confiscation later — adding auth_revocable " +
+		"reaches existing trustlines at once, while adding auth_clawback_enabled " +
+		"under CAP-0035 applies only to trustlines opened after the change). Never " +
+		"sets severity: neither auth_immutable nor a signer lock is a power over " +
+		"holders."
+}
+
+// Inputs implements Check.
+//
+// The flags are read through reconcileFlags, which compares the asset record's
+// copy against the issuer account's, so both are inputs.
+func (MutabilityCheck) Inputs() []string {
+	return []string{"Stat", "Issuer"}
 }
 
 // Run implements Check.
@@ -82,6 +91,7 @@ func (c MutabilityCheck) Run(_ context.Context, s *Subject) (Finding, error) {
 
 	if s.Stat == nil {
 		f.Undetermined = true
+		f.UndeterminedSource = "horizon"
 		f.Reasoning = "The asset was not found on the ledger, so no issuer flags " +
 			"could be read. Whether the flag set can still change is unknown, " +
 			"which is not the same as unlocked and not the same as safe."
@@ -144,11 +154,13 @@ func (c MutabilityCheck) Run(_ context.Context, s *Subject) (Finding, error) {
 				"The issuer can %s today, and it may give that power up, or add "+
 					"another, later. ", joinPowers(powers))
 		}
-		b.WriteString("Under CAP-0035 a flag added later applies only to trustlines " +
-			"opened after the change — it does not reach a trustline that already " +
-			"exists — so this verdict is correct for a trustline opened now but is " +
-			"not guaranteed to stay correct for one opened later. Severity is " +
-			"unchanged; mutability is reported, not scored.")
+		b.WriteString("If auth_revocable were added later it would immediately allow " +
+			"the issuer to freeze existing trustlines — existing holders are exposed " +
+			"as soon as the flag is set. If auth_clawback_enabled were added later, " +
+			"under CAP-0035 it would apply only to trustlines opened after the change " +
+			"and would not reach trustlines that already exist. Either way this verdict " +
+			"is correct for a trustline opened now but is not guaranteed to stay correct " +
+			"for one opened later. Severity is unchanged; mutability is reported, not scored.")
 		if !signingKnown {
 			b.WriteString(" The issuer's signer configuration was not available, so a " +
 				"signer lock could neither be ruled in nor out; this finding does not " +
