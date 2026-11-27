@@ -206,7 +206,7 @@ func (c CapabilityCheck) Run(_ context.Context, s *Subject) (Finding, error) {
 	// clawback through the SAC still requires auth_clawback_enabled. What the
 	// moved admin changes is who can exercise the power, not whether it exists.
 	if s.SACAdmin != "" && s.SACAdmin != s.Asset.Issuer {
-		b.WriteString(fmt.Sprintf(" The asset's Stellar Asset Contract (%s) is "+
+		_, _ = fmt.Fprintf(&b, " The asset's Stellar Asset Contract (%s) is "+
 			"administered by %s, not by the issuer %s. The SAC admin defaults to the "+
 			"issuer when the contract is first enabled and can be moved with set_admin "+
 			"(CAP-46-06), so the issuer flags above no longer describe who can mint, "+
@@ -214,7 +214,7 @@ func (c CapabilityCheck) Run(_ context.Context, s *Subject) (Finding, error) {
 			"to the classic asset's auth_clawback_enabled and auth_revocable flags. If "+
 			"the admin is a contract address, its own logic decides when those powers "+
 			"are used and this scanner cannot inspect it. This is evidence only; it "+
-			"does not change severity.", s.SACAddress, s.SACAdmin, s.Asset.Issuer))
+			"does not change severity.", s.SACAddress, s.SACAdmin, s.Asset.Issuer)
 		f.Evidence = append(f.Evidence, Evidence{
 			Source:         "soroban-rpc/sac-admin",
 			URL:            s.SACAdminURL,

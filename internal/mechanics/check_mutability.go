@@ -126,17 +126,17 @@ func (c MutabilityCheck) Run(_ context.Context, s *Subject) (Finding, error) {
 	case signerLocked:
 		masterWeight, thresholds, _ := s.Issuer.MasterKeyWeight()
 		var b strings.Builder
-		b.WriteString(fmt.Sprintf("The issuer account is locked by its signer configuration: "+
+		_, _ = fmt.Fprintf(&b, "The issuer account is locked by its signer configuration: "+
 			"its master key weight is %d, it has no other signer with weight, and its "+
 			"medium threshold is %d. No transaction can be authorized, so the flag set "+
-			"can never change. ", masterWeight, thresholds.Med))
+			"can never change. ", masterWeight, thresholds.Med)
 		if len(powers) == 0 {
 			b.WriteString("The issuer holds no freeze or confiscation power today, and none " +
 				"can ever be added. That is the same durable safety property as an " +
 				"auth_immutable lock, reached without auth_immutable being set. ")
 		} else {
-			b.WriteString(fmt.Sprintf("The issuer can %s today, and that power is permanent: "+
-				"no signer can ever submit the operation that would give it up. ", joinPowers(powers)))
+			_, _ = fmt.Fprintf(&b, "The issuer can %s today, and that power is permanent: "+
+				"no signer can ever submit the operation that would give it up. ", joinPowers(powers))
 		}
 		b.WriteString("Severity is unchanged; this reports why the verdict is durable, not " +
 			"a new capability. Locked-by-signers does not set the auth_immutable mechanic " +
